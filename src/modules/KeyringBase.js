@@ -84,8 +84,13 @@ export default class KeyringBase {
   getKeyData(options = {}) {
     const result = [];
     for (const key of this.keystore.getAllKeys()) {
-      if (key.verifyPrimaryKey() === openpgp.enums.keyStatus.invalid ||
-          trustKey.isKeyPseudoRevoked(this.id, key)) {
+      try {
+        if (key.verifyPrimaryKey() === openpgp.enums.keyStatus.invalid ||
+            trustKey.isKeyPseudoRevoked(this.id, key)) {
+          continue;
+        }
+      } catch (e) {
+        console.log(`Failed to parse: '${key.primaryKey.getFingerprint()}' reason: ${e}`);
         continue;
       }
       const keyData = {};
