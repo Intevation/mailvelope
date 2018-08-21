@@ -145,14 +145,14 @@ export class RecipientInputCtrl {
     }
     // lookup key in local cache
     recipient.key = this.getKey(recipient);
-    if (recipient.key || recipient.checkedServer || !_props.tofu) {
+    if (recipient.key || recipient.checkedServer || !_props.autolocate) {
       // color tag only if a local key was found, or after server lookup,
       // or if TOFU (Trust on First Use) is deactivated
       this.colorTag(recipient);
       this.checkEncryptStatus();
     } else {
       // no local key found ... lookup on the server
-      this.lookupKeyOnServer(recipient);
+      this.autolocate(recipient);
     }
   }
 
@@ -208,9 +208,9 @@ export class RecipientInputCtrl {
    * @param  {Object} recipient   The recipient object
    * @return {undefined}
    */
-  lookupKeyOnServer(recipient) {
+  autolocate(recipient) {
     recipient.checkedServer = true;
-    _props.onLookupKeyOnServer(recipient);
+    _props.onAutoLocate(recipient);
   }
 
   /**

@@ -15,7 +15,7 @@ import * as sub from './sub.controller';
 import * as uiLog from '../modules/uiLog';
 import {parseMessage, buildMail} from '../modules/mime';
 import {triggerSync} from './sync.controller';
-import KeyServer from '../modules/keyserver';
+import AutoLocate from '../modules/AutoLocate';
 import {getById as getKeyringById, getPreferredKeyringId, getKeyData, getKeyByAddress, syncPublicKeys} from '../modules/keyring';
 import {mapAddressKeyMapToFpr} from '../modules/key';
 
@@ -32,7 +32,7 @@ export default class EditorController extends sub.SubController {
     this.editorPopup = null;
     this.signKey = null;
     this.pwdControl = null;
-    this.keyserver = new KeyServer();
+    this.autolocator = new AutoLocate();
     this.pgpMIME = false;
     this.options = {};
 
@@ -40,7 +40,7 @@ export default class EditorController extends sub.SubController {
     this.on('editor-init', this.onEditorInit);
     this.on('editor-plaintext', this.onEditorPlaintext);
     this.on('editor-user-input', this.onEditorUserInput);
-    this.on('keyserver-lookup', this.onKeyServerLookup);
+    this.on('autolocate', this.onAutoLocate);
     // standalone editor only
     this.on('editor-cancel', this.onEditorCancel);
     this.on('sign-only', this.onSignOnly);
@@ -80,8 +80,8 @@ export default class EditorController extends sub.SubController {
     recipients = emails.map(e => ({email: e}));
     // get all public keys from required keyrings
     const keys = await getKeyData({keyringId: this.keyringId});
-    const tofu = this.keyserver.getTOFUPreference();
-    this.emit('public-key-userids', {keys, recipients, tofu});
+    const autolocate = this.autolocator.getEnabled();
+    this.emit('public-key-userids', {keys, recipients, autolocate});
   }
 
   onEditorOptions(msg) {
@@ -175,18 +175,13 @@ export default class EditorController extends sub.SubController {
   }
 
   /**
-   * Lookup a recipient's public key on the Mailvelope Key Server and
+   * Lookup a recipient's public key on the autolocate sources and
    * store it locally using a TOFU (trust on first use) mechanic.
    * @param  {Object} msg   The event message object
    * @return {undefined}
    */
-  async onKeyServerLookup(msg) {
-    const key = await this.keyserver.lookup(msg.recipient);
-    if (key && key.publicKeyArmored) {
-      // persist key in main keyring
-      const localKeyring = getKeyringById(this.keyringId);
-      await localKeyring.importKeys([{type: 'public', armored: key.publicKeyArmored}]);
-    }
+  async onAutoLocate(msg) {
+    await this.autolocator.locate(msg.recipient);
     await this.sendKeyUpdate();
   }
 
